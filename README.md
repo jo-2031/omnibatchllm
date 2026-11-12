@@ -1,218 +1,45 @@
-# LLM Batch Processor
+# agent-runtime
 
-A multi-provider SDK for batch processing with Large Language Models (LLMs) across different providers like OpenAI, Claude, Gemini, and more.
+A multi-tenant AI customer support platform. Businesses teach an AI agent about their
+business and embed a chat widget on their website; the agent answers their customers and
+hands hard conversations to human staff.
 
-## Features
+One Python codebase runs as three processes:
 
-✅ **Multi-Provider Support** - Unified interface for OpenAI, Claude, Gemini, and other LLM providers  
-✅ **Batch Processing** - Submit and manage batch requests efficiently  
-✅ **Parallel Execution** - Process multiple batches concurrently  
-✅ **Rate Limiting** - Built-in rate limiting to respect API quotas  
-✅ **Retry Mechanism** - Automatic retries with exponential backoff  
-✅ **File Support** - Read/write batches from JSONL, JSON files  
-✅ **Easy Integration** - Simple API for developers  
+- **API service** (FastAPI): REST and WebSocket front door. Never waits on the AI model.
+- **Agent worker**: runs the conversation loop (retrieve, call model, run tools, stream reply).
+- **Ingestion worker**: extracts, chunks, and embeds uploaded documents.
 
-## Installation
+Storage is Postgres 16 with pgvector, Redis (queue, locks, live events), and file storage.
+
+## Local setup
+
+Requires [uv](https://docs.astral.sh/uv/) and Docker.
 
 ```bash
-# Clone repository
-git clone <repo-url>
-cd batch_multi_provider_support
-
-# Install core package
-pip install -e .
-
-# For OpenAI support
-pip install -e ".[openai]"
-
-# For Claude support
-pip install -e ".[anthropic]"
-
-# For Gemini support
-pip install -e ".[google]"
-
-# For development
-pip install -e ".[dev]"
+cp .env.example .env   # then edit if needed
+make install           # install dependencies
+make up                # start Postgres (port 55432) and Redis (port 56379)
+make migrate           # create the database tables
+make run               # start the API on http://127.0.0.1:8000
 ```
 
-## Quick Start
+Check it: `curl http://127.0.0.1:8000/health/ready` and open http://127.0.0.1:8000/docs.
 
-### 1. Basic Usage
+Integration tests (in `tests/integration/`) use the `agent_runtime_test` database and are
+skipped with a message if Postgres or Redis isn't running.
 
-```python
-from llm_batch_processor.providers import ProviderFactory
-import os
+## Commands
 
-# Create provider
-provider = ProviderFactory.create(
-    provider_name="openai",
-    api_key=os.getenv("OPENAI_API_KEY")
-)
-
-# Define batch requests
-batch = [
-    {
-        "custom_id": "request-1",
-        "method": "POST",
-        "url": "/v1/chat/completions",
-        "body": {
-            "model": "gpt-4",
-            "messages": [{"role": "user", "content": "Hello!"}]
-        }
-    }
-]
-
-# Submit batch
-batch_id = provider.submit_batch(batch)
-print(f"Batch ID: {batch_id}")
-
-# Check status
-status = provider.get_batch_status(batch_id)
-print(f"Status: {status}")
-
-# Get results
-results = provider.get_batch_results(batch_id)
-print(f"Results: {results}")
-```
-
-### 2. List Available Providers
-
-```python
-from llm_batch_processor.providers import ProviderFactory
-
-providers = ProviderFactory.get_available_providers()
-print(providers)  # ['openai']
-```
-
-## Project Structure
-
-```
-llm_batch_processor/
-├── core/              # Base classes & interfaces
-├── providers/         # Provider implementations
-├── engine/           # Batch processing engine (coming)
-├── middleware/       # Rate limiting, retries (coming)
-├── storage/          # File I/O (coming)
-└── config/           # Configuration (coming)
-
-examples/             # Usage examples
-tests/                # Unit & integration tests (coming)
-```
-
-## Providers
-
-### ✅ Implemented
-- **OpenAI** - ChatGPT, GPT-4, etc.
-
-### 🔄 Coming Soon
-- **Claude** (Anthropic)
-- **Gemini** (Google)
-- **LLaMA** (Meta)
-- **Cohere**
-
-## Configuration
-
-Providers are configured via environment variables or config dictionaries:
-
-```python
-config = {
-    "model": "gpt-4",
-    "timeout": 30,
-    "max_retries": 3,
-}
-
-provider = ProviderFactory.create(
-    provider_name="openai",
-    api_key="sk-...",
-    config=config
-)
-```
-
-## API Documentation
-
-### ProviderFactory
-
-```python
-# Create a provider
-provider = ProviderFactory.create(
-    provider_name: str,      # "openai", "claude", etc.
-    api_key: str,            # API key
-    config: dict = None,     # Optional config
-)
-
-# Register new provider
-ProviderFactory.register_provider("custom", CustomProvider)
-
-# Check available providers
-providers = ProviderFactory.get_available_providers()
-
-# Check if provider exists
-exists = ProviderFactory.is_registered("openai")
-```
-
-### BaseProvider Methods
-
-All providers implement:
-
-```python
-# Submit a batch
-batch_id = provider.submit_batch(requests)
-
-# Get batch status
-status = provider.get_batch_status(batch_id)
-
-# Get results
-results = provider.get_batch_results(batch_id)
-
-# Validate request
-provider.validate_request(request)
-```
-
-## Development
-
-### Run Tests (Coming)
-```bash
-pytest
-```
-
-### Code Quality
-```bash
-black .           # Format
-ruff check .      # Lint
-mypy .            # Type check
-```
-
-### Build & Publish (Coming)
-```bash
-python -m build
-twine upload dist/*
-```
-
-## Roadmap
-
-- [x] Phase 1: Basic provider abstraction
-- [x] Phase 1: OpenAI provider
-- [ ] Phase 2: Batch processing engine
-- [ ] Phase 2: Rate limiting & retries
-- [ ] Phase 3: File I/O support
-- [ ] Phase 3: Claude & Gemini providers
-- [ ] Phase 4: Async/parallel support
-- [ ] Phase 4: Tests & documentation
-
-## Contributing
-
-Contributions welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new features
-4. Submit a PR
-
-## License
-
-MIT License - see LICENSE file
-
-## Support
-
-- 📖 [Documentation](https://github.com/yourusername/llm-batch-processor#readme)
-- 🐛 [Issues](https://github.com/yourusername/llm-batch-processor/issues)
-- 💬 [Discussions](https://github.com/yourusername/llm-batch-processor/discussions)
+| Command          | What it does                       |
+|------------------|------------------------------------|
+| `make test`      | Run all tests                      |
+| `make test-unit` | Run tests that need no Docker      |
+| `make migrate`   | Apply database migrations          |
+| `make revision m="..."` | Generate a migration from model changes |
+| `make reset-db`  | Delete local data and start fresh  |
+| `make lint`      | Lint and format check (ruff)       |
+| `make format`    | Auto-fix lint and format           |
+| `make typecheck` | Type check (mypy)                  |
+| `make check`     | Lint, type check, and test         |
+| `make down`      | Stop Postgres and Redis            |
