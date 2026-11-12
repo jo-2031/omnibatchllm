@@ -1,6 +1,7 @@
 import os
 import socket
-from collections.abc import Iterator
+import uuid
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -56,6 +57,28 @@ def integration_settings() -> Settings:
 def api(integration_settings: Settings) -> Iterator[TestClient]:
     with TestClient(create_app(integration_settings)) as client:
         yield client
+
+
+@pytest.fixture
+def new_business(api: TestClient) -> Callable[[], dict[str, str]]:
+    """Signs up a fresh business and returns auth headers for its owner."""
+
+    def _signup() -> dict[str, str]:
+        suffix = uuid.uuid4().hex[:8]
+        response = api.post(
+            "/auth/signup",
+            json={
+                "email": f"owner-{suffix}@example.com",
+                "password": "a-long-enough-password",
+                "full_name": "Test Owner",
+                "business_name": f"Business {suffix}",
+                "business_slug": f"business-{suffix}",
+            },
+        )
+        assert response.status_code == 201, response.text
+        return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+    return _signup
 
 
 @pytest.fixture

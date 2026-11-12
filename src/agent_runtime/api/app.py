@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from agent_runtime.api import auth, health
+from agent_runtime.api import auth, conversations, health
 from agent_runtime.config import Settings, get_settings
 from agent_runtime.db.session import create_engine, create_session_factory
 from agent_runtime.observability import configure_logging
@@ -36,4 +36,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.include_router(health.router)
     app.include_router(auth.router)
+    app.include_router(conversations.router)
     return app

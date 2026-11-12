@@ -1,4 +1,4 @@
-.PHONY: install up down reset-db logs migrate revision run test test-unit lint format typecheck check
+.PHONY: install up down reset-db logs migrate migrations-check revision run test test-unit lint format typecheck check
 
 install:
 	uv sync
@@ -19,6 +19,10 @@ logs:
 
 migrate:
 	uv run alembic upgrade head
+
+# Fails if the models in db/models.py have changes that no migration covers.
+migrations-check:
+	uv run alembic check
 
 # Usage: make revision m="add users table"
 revision:
