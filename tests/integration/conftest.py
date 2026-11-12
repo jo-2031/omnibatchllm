@@ -1,12 +1,15 @@
 import os
 import socket
+from collections.abc import Iterator
 from pathlib import Path
 from urllib.parse import urlsplit
 
 import pytest
 from alembic import command
 from alembic.config import Config
+from fastapi.testclient import TestClient
 
+from agent_runtime.api.app import create_app
 from agent_runtime.config import Settings
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -45,7 +48,14 @@ def integration_settings() -> Settings:
         environment="test",
         database_url=TEST_DATABASE_URL,
         redis_url=TEST_REDIS_URL,
+        jwt_secret="integration-test-jwt-secret-long-enough",
     )
+
+
+@pytest.fixture
+def api(integration_settings: Settings) -> Iterator[TestClient]:
+    with TestClient(create_app(integration_settings)) as client:
+        yield client
 
 
 @pytest.fixture

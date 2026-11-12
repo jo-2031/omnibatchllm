@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,6 +17,17 @@ class Settings(BaseSettings):
 
     database_url: str
     redis_url: str
+
+    jwt_secret: SecretStr
+    jwt_algorithm: Literal["HS256"] = "HS256"
+    access_token_ttl_minutes: int = 60
+
+    @field_validator("jwt_secret")
+    @classmethod
+    def _jwt_secret_is_long_enough(cls, value: SecretStr) -> SecretStr:
+        if len(value.get_secret_value()) < 32:
+            raise ValueError("must be at least 32 characters")
+        return value
 
 
 @lru_cache
